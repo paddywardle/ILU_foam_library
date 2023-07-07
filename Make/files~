@@ -1,0 +1,4 @@
+ILU0Paddy/ILU0Paddy.C
+ILUC0/ILUC0.C
+
+LIB = $(FOAM_USER_LIBBIN)/libPaddySolvers
