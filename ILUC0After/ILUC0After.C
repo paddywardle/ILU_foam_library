@@ -22,7 +22,7 @@ License
     along with foam-extend.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    ILUC0Paddy
+    ILUC0After
 
 Description
     ILU preconditioning without fill in based on Crout algorithm. L and U are
@@ -36,31 +36,31 @@ Author
 
 \*---------------------------------------------------------------------------*/
 
-#include "ILUC0Paddy.H"
+#include "ILUC0After.H"
 #include "addToRunTimeSelectionTable.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
 namespace Foam
 {
-    defineTypeNameAndDebug(ILUC0Paddy, 0);
+    defineTypeNameAndDebug(ILUC0After, 0);
 
     // Register with symmetric and asymmetric run-time selection table
     // HJ and VV, 31/Oct/2017
     lduPreconditioner::
-        addsymMatrixConstructorToTable<ILUC0Paddy>
-        addILUC0PaddyditionerSymMatrixConstructorToTable_;
+        addsymMatrixConstructorToTable<ILUC0After>
+        addILUC0AfterditionerSymMatrixConstructorToTable_;
 
     lduPreconditioner::
-        addasymMatrixConstructorToTable<ILUC0Paddy>
-        addILUC0PaddyditionerAsymMatrixConstructorToTable_;
+        addasymMatrixConstructorToTable<ILUC0After>
+        addILUC0AfterditionerAsymMatrixConstructorToTable_;
 }
 
 
 // * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
 
 
-void Foam::ILUC0Paddy::calcFactorization()
+void Foam::ILUC0After::calcFactorization()
 {
     if (!matrix_.diagonal())
     {
@@ -221,7 +221,7 @@ void Foam::ILUC0Paddy::calcFactorization()
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-Foam::ILUC0Paddy::ILUC0Paddy
+Foam::ILUC0After::ILUC0After
 (
     const lduMatrix& matrix,
     const FieldField<Field, scalar>& coupleBouCoeffs,
@@ -248,7 +248,7 @@ Foam::ILUC0Paddy::ILUC0Paddy
 }
 
 
-Foam::ILUC0Paddy::ILUC0Paddy
+Foam::ILUC0After::ILUC0After
 (
     const lduMatrix& matrix,
     const FieldField<Field, scalar>& coupleBouCoeffs,
@@ -276,17 +276,17 @@ Foam::ILUC0Paddy::ILUC0Paddy
 
 // * * * * * * * * * * * * * * * * Destructor  * * * * * * * * * * * * * * * //
 
-Foam::ILUC0Paddy::~ILUC0Paddy()
+Foam::ILUC0After::~ILUC0After()
 {}
 
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-void Foam::ILUC0Paddy::precondition
+void Foam::ILUC0After::precondition
 (
     scalarField& x,
     const scalarField& b,
-    const direction
+    const direction cmpt
 ) const
 {
     if (!matrix_.diagonal())
@@ -333,14 +333,45 @@ void Foam::ILUC0Paddy::precondition
             x[rowI] -=
                 preconUpper_[coeffI]*x[upperAddr[coeffI]]*preconDiag_[rowI];
         }
+	
+        // Parallel preconditioning
+        // HJ, 19/Jun/2017
+
+        scalarField xCorr(x.size(), 0);
+
+        // Coupled boundary update
+        {
+            matrix_.initMatrixInterfaces
+            (
+                coupleBouCoeffs_,
+                interfaces_,
+                x,
+                xCorr,               // put result into xCorr
+                cmpt,
+                false
+            );
+
+            matrix_.updateMatrixInterfaces
+            (
+                coupleBouCoeffs_,
+                interfaces_,
+                x,
+                xCorr,               // put result into xCorr
+                cmpt,
+                false
+            );
+
+            // Multiply with inverse diag to precondition
+            x += xCorr*preconDiag_;
+        }
     }
     else
     {
         WarningIn
         (
-            "void ILUC0Paddy::precondition"
+            "void ILUC0After::precondition"
             "(scalarField& x, const scalarField& b, const direction cmpt)"
-        )   << "Unnecessary use of ILUC0Paddy preconditioner for diagonal matrix. "
+        )   << "Unnecessary use of ILUC0After preconditioner for diagonal matrix. "
             << nl
             << "Use diagonal preconditioner instead."
             << endl;
@@ -354,7 +385,7 @@ void Foam::ILUC0Paddy::precondition
 }
 
 
-void Foam::ILUC0Paddy::preconditionT
+void Foam::ILUC0After::preconditionT
 (
     scalarField& x,
     const scalarField& b,
@@ -405,14 +436,46 @@ void Foam::ILUC0Paddy::preconditionT
             // Subtract already updated upper part from the solution
             x[lowerAddr[coeffI]] -= preconLower_[coeffI]*x[upperAddr[coeffI]];
         }
+
+        // Parallel preconditioning
+        // HJ, 19/Jun/2017
+
+        scalarField xCorr(x.size(), 0);
+
+        // Coupled boundary update
+        {
+            matrix_.initMatrixInterfaces
+            (
+                coupleBouCoeffs_,
+                interfaces_,
+                x,
+                xCorr,               // put result into xCorr
+                cmpt,
+                false
+            );
+
+            matrix_.updateMatrixInterfaces
+            (
+                coupleBouCoeffs_,
+                interfaces_,
+                x,
+                xCorr,               // put result into xCorr
+                cmpt,
+                false
+            );
+
+            // Multiply with inverse diag to precondition
+            x += xCorr*preconDiag_;
+        }
+	
     }
     else
     {
         WarningIn
         (
-            "void ILUC0Paddy::preconditionT"
+            "void ILUC0After::preconditionT"
             "(scalarField& x, const scalarField& b, const direction cmpt)"
-        )   << "Unnecessary use of ILUC0Paddy preconditioner for diagonal matrix. "
+        )   << "Unnecessary use of ILUC0After preconditioner for diagonal matrix. "
             << nl
             << "Use diagonal preconditioner instead."
             << endl;

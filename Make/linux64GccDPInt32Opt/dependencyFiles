@@ -1,3 +1,7 @@
 DEPENDENCIES = \
-ILU0Paddy/ILU0Paddy.dep\
-ILUC0Paddy/ILUC0Paddy.dep
+ILU0Before/ILU0Before.dep\
+ILU0After/ILU0After.dep\
+ILU0BeforeAfter/ILU0BeforeAfter.dep\
+ILUC0Before/ILUC0Before.dep\
+ILUC0After/ILUC0After.dep\
+ILUC0BeforeAfter/ILUC0BeforeAfter.dep

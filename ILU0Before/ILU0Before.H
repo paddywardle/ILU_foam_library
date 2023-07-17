@@ -22,25 +22,21 @@ License
     along with foam-extend.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    ILUC0Paddy
+    ILU0Before
 
 Description
-    ILU preconditioning without fill in based on Crout algorithm. L and U are
-    calculated and stored.
-
-    Reference: Saad, Y.: Iterative Methods for Sparse Linear Systems (2nd
-    Edition), SIAM, 2003.
+    ILU preconditioning with no fill-in
 
 Author
-    Vuko Vukcevic, FMENA Zagreb. All rights reserved
+    Hrvoje Jasak, Wikki Ltd.  All rights reserved
 
 SourceFiles
-    ILUC0Paddy.C
+    ILU0Before.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef ILUC0Paddy_H
-#define ILUC0Paddy_H
+#ifndef ILU0Before_H
+#define ILU0Before_H
 
 #include "lduMatrix.H"
 
@@ -50,10 +46,10 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-                           Class ILUC0Paddy Declaration
+                       Class ILU0Before Declaration
 \*---------------------------------------------------------------------------*/
 
-class ILUC0Paddy
+class ILU0Before
 :
     public lduPreconditioner
 {
@@ -62,44 +58,29 @@ class ILUC0Paddy
         //- Preconditioned diagonal
         scalarField preconDiag_;
 
-        //- Strictly lower part
-        scalarField preconLower_;
-
-        //- Strictly upper part
-        scalarField preconUpper_;
-
-        //- Temporary working diagonal
-        scalar zDiag_;
-
-        //- Temporary working row field
-        scalarField z_;
-
-        //- Temporary Working column field
-        scalarField w_;
-
 
     // Private Member Functions
 
         //- Disallow default bitwise copy construct
-        ILUC0Paddy(const ILUC0Paddy&);
+        ILU0Before(const ILU0Before&);
 
         //- Disallow default bitwise assignment
-        void operator=(const ILUC0Paddy&);
+        void operator=(const ILU0Before&);
 
-        //- Calculate LU factorization
-        void calcFactorization();
+        //- Precondition the diagonal
+        void calcPreconDiag();
 
 
 public:
 
     //- Runtime type information
-    TypeName("ILUC0Paddy");
+    TypeName("ILU0Before");
 
 
     // Constructors
 
         //- Construct from matrix and dictionary
-        ILUC0Paddy
+        ILU0Before
         (
             const lduMatrix& matrix,
             const FieldField<Field, scalar>& coupleBouCoeffs,
@@ -109,7 +90,7 @@ public:
         );
 
         //- Construct from matrix as a smoother
-        ILUC0Paddy
+        ILU0Before
         (
             const lduMatrix& matrix,
             const FieldField<Field, scalar>& coupleBouCoeffs,
@@ -119,7 +100,7 @@ public:
 
 
     //- Destructor
-    virtual ~ILUC0Paddy();
+    virtual ~ILU0Before();
 
 
     // Member Functions
@@ -127,16 +108,16 @@ public:
         //- Execute preconditioning
         virtual void precondition
         (
-            scalarField& x,
-            const scalarField& b,
+            scalarField& wA,
+            const scalarField& rA,
             const direction cmpt = 0
         ) const;
 
         //- Execute preconditioning with matrix transpose
         virtual void preconditionT
         (
-            scalarField& x,
-            const scalarField& b,
+            scalarField& wT,
+            const scalarField& rT,
             const direction cmpt = 0
         ) const;
 };

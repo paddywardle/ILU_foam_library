@@ -22,7 +22,7 @@ License
     along with foam-extend.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    ILU0Paddy
+    ILU0BeforeAfter
 
 Description
     ILU preconditioning with no fill-in
@@ -31,12 +31,12 @@ Author
     Hrvoje Jasak, Wikki Ltd.  All rights reserved
 
 SourceFiles
-    ILU0Paddy.C
+    ILU0BeforeAfter.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef ILU0Paddy_H
-#define ILU0Paddy_H
+#ifndef ILU0BeforeAfter_H
+#define ILU0BeforeAfter_H
 
 #include "lduMatrix.H"
 
@@ -46,10 +46,10 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-                       Class ILU0Paddy Declaration
+                       Class ILU0BeforeAfter Declaration
 \*---------------------------------------------------------------------------*/
 
-class ILU0Paddy
+class ILU0BeforeAfter
 :
     public lduPreconditioner
 {
@@ -62,10 +62,10 @@ class ILU0Paddy
     // Private Member Functions
 
         //- Disallow default bitwise copy construct
-        ILU0Paddy(const ILU0Paddy&);
+        ILU0BeforeAfter(const ILU0BeforeAfter&);
 
         //- Disallow default bitwise assignment
-        void operator=(const ILU0Paddy&);
+        void operator=(const ILU0BeforeAfter&);
 
         //- Precondition the diagonal
         void calcPreconDiag();
@@ -74,13 +74,13 @@ class ILU0Paddy
 public:
 
     //- Runtime type information
-    TypeName("ILU0PaddyPaddy");
+    TypeName("ILU0BeforeAfter");
 
 
     // Constructors
 
         //- Construct from matrix and dictionary
-        ILU0Paddy
+        ILU0BeforeAfter
         (
             const lduMatrix& matrix,
             const FieldField<Field, scalar>& coupleBouCoeffs,
@@ -90,7 +90,7 @@ public:
         );
 
         //- Construct from matrix as a smoother
-        ILU0Paddy
+        ILU0BeforeAfter
         (
             const lduMatrix& matrix,
             const FieldField<Field, scalar>& coupleBouCoeffs,
@@ -100,7 +100,7 @@ public:
 
 
     //- Destructor
-    virtual ~ILU0Paddy();
+    virtual ~ILU0BeforeAfter();
 
 
     // Member Functions

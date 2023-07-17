@@ -1,3 +1,7 @@
 LOCAL_OBJECTS = \
-ILU0Paddy.o\
-ILUC0Paddy.o
+ILU0Before.o\
+ILU0After.o\
+ILU0BeforeAfter.o\
+ILUC0Before.o\
+ILUC0After.o\
+ILUC0BeforeAfter.o

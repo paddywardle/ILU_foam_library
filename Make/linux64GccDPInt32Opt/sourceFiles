@@ -1,3 +1,7 @@
 SOURCE = \
-ILU0Paddy/ILU0Paddy.C\
-ILUC0Paddy/ILUC0Paddy.C
+ILU0Before/ILU0Before.C\
+ILU0After/ILU0After.C\
+ILU0BeforeAfter/ILU0BeforeAfter.C\
+ILUC0Before/ILUC0Before.C\
+ILUC0After/ILUC0After.C\
+ILUC0BeforeAfter/ILUC0BeforeAfter.C

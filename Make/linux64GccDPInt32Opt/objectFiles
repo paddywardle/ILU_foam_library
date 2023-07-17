@@ -1,3 +1,7 @@
 OBJECTS = \
-$(OBJECTS_DIR)/ILU0Paddy.o\
-$(OBJECTS_DIR)/ILUC0Paddy.o
+$(OBJECTS_DIR)/ILU0Before.o\
+$(OBJECTS_DIR)/ILU0After.o\
+$(OBJECTS_DIR)/ILU0BeforeAfter.o\
+$(OBJECTS_DIR)/ILUC0Before.o\
+$(OBJECTS_DIR)/ILUC0After.o\
+$(OBJECTS_DIR)/ILUC0BeforeAfter.o

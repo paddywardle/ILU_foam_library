@@ -22,34 +22,34 @@ License
     along with foam-extend.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    ILU0Paddy
+    ILU0BeforeAfter
 
 Description
-    Incmplete Cholesky preconditioning with no fill-in
+    Incomplete Cholesky preconditioning with no fill-in
 
 Author
     Hrvoje Jasak, Wikki Ltd.  All rights reserved
 
 \*---------------------------------------------------------------------------*/
 
-#include "ILU0Paddy.H"
+#include "ILU0BeforeAfter.H"
 #include "addToRunTimeSelectionTable.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
 namespace Foam
 {
-    defineTypeNameAndDebug(ILU0Paddy, 0);
+    defineTypeNameAndDebug(ILU0BeforeAfter, 0);
 
     lduPreconditioner::
-        addasymMatrixConstructorToTable<ILU0Paddy>
-        addILU0PaddyditionerAsymMatrixConstructorToTable_;
+        addasymMatrixConstructorToTable<ILU0BeforeAfter>
+        addILU0BeforeAfterditionerAsymMatrixConstructorToTable_;
 }
 
 
 // * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
 
-void Foam::ILU0Paddy::calcPreconDiag()
+void Foam::ILU0BeforeAfter::calcPreconDiag()
 {
     // Precondition the diagonal
 
@@ -114,7 +114,7 @@ void Foam::ILU0Paddy::calcPreconDiag()
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-Foam::ILU0Paddy::ILU0Paddy
+Foam::ILU0BeforeAfter::ILU0BeforeAfter
 (
     const lduMatrix& matrix,
     const FieldField<Field, scalar>& coupleBouCoeffs,
@@ -132,12 +132,11 @@ Foam::ILU0Paddy::ILU0Paddy
     ),
     preconDiag_(matrix_.diag())
 {
-   Info << "Hello from Paddy" <<endl;
     calcPreconDiag();
 }
 
 
-Foam::ILU0Paddy::ILU0Paddy
+Foam::ILU0BeforeAfter::ILU0BeforeAfter
 (
     const lduMatrix& matrix,
     const FieldField<Field, scalar>& coupleBouCoeffs,
@@ -155,38 +154,36 @@ Foam::ILU0Paddy::ILU0Paddy
 
     preconDiag_(matrix_.diag())
 {
-   Info << "Hello from Paddy" <<endl;
     calcPreconDiag();
 }
 
 
 // * * * * * * * * * * * * * * * * Destructor  * * * * * * * * * * * * * * * //
 
-Foam::ILU0Paddy::~ILU0Paddy()
+Foam::ILU0BeforeAfter::~ILU0BeforeAfter()
 {}
 
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-void Foam::ILU0Paddy::precondition
+void Foam::ILU0BeforeAfter::precondition
 (
     scalarField& x,
     const scalarField& b,
     const direction cmpt
 ) const
 {
-   Info << "Hello from Paddy" <<endl;
     if (matrix_.symmetric())
     {
         FatalErrorIn
         (
-            "void ILU0Paddy::precondition\n"
+            "void ILU0BeforeAfter::precondition\n"
             "(\n"
             "    scalarField& x,\n"
             "    const scalarField& b,\n"
             "    const direction cmpt\n"
             ") const"
-        )   << "Calling ILU0Paddy on a symetric matrix.  "
+        )   << "Calling ILU0BeforeAfter on a symetric matrix.  "
             << "Please use CholeskyPrecon instead"
             << abort(FatalError);
     }
@@ -214,32 +211,6 @@ void Foam::ILU0Paddy::precondition
 
     if (matrix_.asymmetric())
     {
-        const unallocLabelList& upperAddr = matrix_.lduAddr().upperAddr();
-        const unallocLabelList& lowerAddr = matrix_.lduAddr().lowerAddr();
-        const unallocLabelList& losortAddr = matrix_.lduAddr().losortAddr();
-
-        // Get off-diagonal matrix coefficients
-        const scalarField& upper = matrix_.upper();
-        const scalarField& lower = matrix_.lower();
-
-        label losortIndex;
-
-        forAll (lower, coeffI)
-        {
-            losortIndex = losortAddr[coeffI];
-
-            x[upperAddr[losortIndex]] -=
-                preconDiag_[upperAddr[losortIndex]]*
-                lower[losortIndex]*x[lowerAddr[losortIndex]];
-        }
-
-        forAllReverse (upper, coeffI)
-        {
-            x[lowerAddr[coeffI]] -=
-                preconDiag_[lowerAddr[coeffI]]*
-                upper[coeffI]*x[upperAddr[coeffI]];
-        }
-/*
         // Parallel preconditioning
         // HJ, 19/Jun/2017
 
@@ -270,12 +241,93 @@ void Foam::ILU0Paddy::precondition
             // Multiply with inverse diag to precondition
             x += xCorr*preconDiag_;
         }
-*/
+	
+        const unallocLabelList& upperAddr = matrix_.lduAddr().upperAddr();
+        const unallocLabelList& lowerAddr = matrix_.lduAddr().lowerAddr();
+        const unallocLabelList& losortAddr = matrix_.lduAddr().losortAddr();
+
+        // Get off-diagonal matrix coefficients
+        const scalarField& upper = matrix_.upper();
+        const scalarField& lower = matrix_.lower();
+
+        label losortIndex;
+
+        forAll (lower, coeffI)
+        {
+            losortIndex = losortAddr[coeffI];
+
+            x[upperAddr[losortIndex]] -=
+                preconDiag_[upperAddr[losortIndex]]*
+                lower[losortIndex]*x[lowerAddr[losortIndex]];
+        }
+
+        // scalarField xBet(x.size(), 0);
+
+        // // Coupled boundary update
+        // {
+        //     matrix_.initMatrixInterfaces
+        //     (
+        //         coupleBouCoeffs_,
+        //         interfaces_,
+        //         x,
+        //         xBet,               // put result into xCorr
+        //         cmpt,
+        //         false
+        //     );
+
+        //     matrix_.updateMatrixInterfaces
+        //     (
+        //         coupleBouCoeffs_,
+        //         interfaces_,
+        //         x,
+        //         xBet,               // put result into xCorr
+        //         cmpt,
+        //         false
+        //     );
+
+        //     // Multiply with inverse diag to precondition
+        //     x += xBet*preconDiag_;
+        // }
+
+        forAllReverse (upper, coeffI)
+        {
+            x[lowerAddr[coeffI]] -=
+                preconDiag_[lowerAddr[coeffI]]*
+                upper[coeffI]*x[upperAddr[coeffI]];
+        }
+
+	scalarField xRev(x.size(), 0);
+	
+        // Coupled boundary update
+        {
+            matrix_.initMatrixInterfaces
+            (
+                coupleBouCoeffs_,
+                interfaces_,
+                x,
+                xRev,               // put result into xCorr
+                cmpt,
+                false
+            );
+
+            matrix_.updateMatrixInterfaces
+            (
+                coupleBouCoeffs_,
+                interfaces_,
+                x,
+                xRev,               // put result into xCorr
+                cmpt,
+                false
+            );
+
+            // Multiply with inverse diag to precondition
+            x += xRev*preconDiag_;
+        }
     }
 }
 
 
-void Foam::ILU0Paddy::preconditionT
+void Foam::ILU0BeforeAfter::preconditionT
 (
     scalarField& x,
     const scalarField& b,
@@ -286,13 +338,13 @@ void Foam::ILU0Paddy::preconditionT
     {
         FatalErrorIn
         (
-            "void ILU0Paddy::precondition\n"
+            "void ILU0BeforeAfter::precondition\n"
             "(\n"
             "    scalarField& x,\n"
             "    const scalarField& b,\n"
             "    const direction cmpt\n"
             ") const"
-        )   << "Calling ILU0Paddy on a symetric matrix.  "
+        )   << "Calling ILU0BeforeAfter on a symetric matrix.  "
             << "Please use CholeskyPrecon instead"
             << abort(FatalError);
     }
@@ -320,6 +372,37 @@ void Foam::ILU0Paddy::preconditionT
 
     if (matrix_.asymmetric())
     {
+        // Parallel preconditioning
+        // HJ, 19/Jun/2017
+
+        scalarField xCorr(x.size(), 0);
+
+        //Coupled boundary update
+        {
+            matrix_.initMatrixInterfaces
+            (
+                coupleBouCoeffs_,
+                interfaces_,
+                x,
+                xCorr,               // put result into xCorr
+                cmpt,
+                false
+            );
+
+            matrix_.updateMatrixInterfaces
+            (
+                coupleBouCoeffs_,
+                interfaces_,
+                x,
+                xCorr,               // put result into xCorr
+                cmpt,
+                false
+            );
+
+            // Multiply with inverse diag to precondition
+            x += xCorr*preconDiag_;
+        }
+	
         const unallocLabelList& upperAddr = matrix_.lduAddr().upperAddr();
         const unallocLabelList& lowerAddr = matrix_.lduAddr().lowerAddr();
         const unallocLabelList& losortAddr = matrix_.lduAddr().losortAddr();
@@ -338,6 +421,34 @@ void Foam::ILU0Paddy::preconditionT
                 upper[coeffI]*x[lowerAddr[coeffI]];
         }
 
+        // scalarField xBet(x.size(), 0);
+
+        // // Coupled boundary update
+        // {
+        //     matrix_.initMatrixInterfaces
+        //     (
+        //         coupleBouCoeffs_,
+        //         interfaces_,
+        //         x,
+        //         xBet,               // put result into xCorr
+        //         cmpt,
+        //         false
+        //     );
+
+        //     matrix_.updateMatrixInterfaces
+        //     (
+        //         coupleBouCoeffs_,
+        //         interfaces_,
+        //         x,
+        //         xBet,               // put result into xCorr
+        //         cmpt,
+        //         false
+        //     );
+
+        //     // Multiply with inverse diag to precondition
+        //     x += xBet*preconDiag_;
+        // }
+
         forAllReverse (upper, coeffI)
         {
             losortIndex = losortAddr[coeffI];
@@ -346,6 +457,34 @@ void Foam::ILU0Paddy::preconditionT
             x[lowerAddr[losortIndex]] -=
                 preconDiag_[lowerAddr[losortIndex]]*
                 lower[losortIndex]*x[upperAddr[losortIndex]];
+        }
+
+	scalarField xRev(x.size(), 0);
+	
+        // Coupled boundary update
+        {
+            matrix_.initMatrixInterfaces
+            (
+                coupleBouCoeffs_,
+                interfaces_,
+                x,
+                xRev,               // put result into xCorr
+                cmpt,
+                false
+            );
+
+            matrix_.updateMatrixInterfaces
+            (
+                coupleBouCoeffs_,
+                interfaces_,
+                x,
+                xRev,               // put result into xCorr
+                cmpt,
+                false
+            );
+
+            // Multiply with inverse diag to precondition
+            x += xRev*preconDiag_;
         }
     }
 }
