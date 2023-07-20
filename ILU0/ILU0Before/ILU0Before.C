@@ -22,7 +22,7 @@ License
     along with foam-extend.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    ILU0After
+    ILU0Before
 
 Description
     Incomplete Cholesky preconditioning with no fill-in
@@ -32,24 +32,24 @@ Author
 
 \*---------------------------------------------------------------------------*/
 
-#include "ILU0After.H"
+#include "ILU0Before.H"
 #include "addToRunTimeSelectionTable.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
 namespace Foam
 {
-    defineTypeNameAndDebug(ILU0After, 0);
+    defineTypeNameAndDebug(ILU0Before, 0);
 
     lduPreconditioner::
-        addasymMatrixConstructorToTable<ILU0After>
-        addILU0AfterditionerAsymMatrixConstructorToTable_;
+        addasymMatrixConstructorToTable<ILU0Before>
+        addILU0BeforeditionerAsymMatrixConstructorToTable_;
 }
 
 
 // * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
 
-void Foam::ILU0After::calcPreconDiag()
+void Foam::ILU0Before::calcPreconDiag()
 {
     // Precondition the diagonal
 
@@ -80,7 +80,7 @@ void Foam::ILU0After::calcPreconDiag()
                     // Note: change of the sign compared to main loop below
                     // This is because lower = -intCoeffs
                     // HJ and VV, 19/Jun/2017
-                    // Note: sign fixed by HJ, 19/Jun/2017
+                    // Note: sign fixed by PW, 20/Jul/2023
                     preconDiag_[fc[coeffI]] +=
                         bouCoeffs[coeffI]*intCoeffs[coeffI]/
                         preconDiag_[fc[coeffI]];
@@ -114,7 +114,7 @@ void Foam::ILU0After::calcPreconDiag()
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-Foam::ILU0After::ILU0After
+Foam::ILU0Before::ILU0Before
 (
     const lduMatrix& matrix,
     const FieldField<Field, scalar>& coupleBouCoeffs,
@@ -136,7 +136,7 @@ Foam::ILU0After::ILU0After
 }
 
 
-Foam::ILU0After::ILU0After
+Foam::ILU0Before::ILU0Before
 (
     const lduMatrix& matrix,
     const FieldField<Field, scalar>& coupleBouCoeffs,
@@ -160,13 +160,13 @@ Foam::ILU0After::ILU0After
 
 // * * * * * * * * * * * * * * * * Destructor  * * * * * * * * * * * * * * * //
 
-Foam::ILU0After::~ILU0After()
+Foam::ILU0Before::~ILU0Before()
 {}
 
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-void Foam::ILU0After::precondition
+void Foam::ILU0Before::precondition
 (
     scalarField& x,
     const scalarField& b,
@@ -177,13 +177,13 @@ void Foam::ILU0After::precondition
     {
         FatalErrorIn
         (
-            "void ILU0After::precondition\n"
+            "void ILU0Before::precondition\n"
             "(\n"
             "    scalarField& x,\n"
             "    const scalarField& b,\n"
             "    const direction cmpt\n"
             ") const"
-        )   << "Calling ILU0After on a symetric matrix.  "
+        )   << "Calling ILU0Before on a symetric matrix.  "
             << "Please use CholeskyPrecon instead"
             << abort(FatalError);
     }
@@ -211,7 +211,39 @@ void Foam::ILU0After::precondition
 
     if (matrix_.asymmetric())
     {
+        // Parallel preconditioning
+        // PW, 17/Jul/2023
 
+        scalarField xCorr(x.size(), 0);
+
+        // Coupled boundary update
+        {
+            matrix_.initMatrixInterfaces
+            (
+                coupleBouCoeffs_,
+                interfaces_,
+                x,
+                xCorr,               // put result into xCorr
+                cmpt,
+                false
+            );
+
+            matrix_.updateMatrixInterfaces
+            (
+                coupleBouCoeffs_,
+                interfaces_,
+                x,
+                xCorr,               // put result into xCorr
+                cmpt,
+                false
+            );
+
+            // Multiply with inverse diag to precondition
+            x += xCorr*preconDiag_;
+        }
+
+	
+	
         const unallocLabelList& upperAddr = matrix_.lduAddr().upperAddr();
         const unallocLabelList& lowerAddr = matrix_.lduAddr().lowerAddr();
         const unallocLabelList& losortAddr = matrix_.lduAddr().losortAddr();
@@ -237,42 +269,11 @@ void Foam::ILU0After::precondition
                 preconDiag_[lowerAddr[coeffI]]*
                 upper[coeffI]*x[upperAddr[coeffI]];
         }
-
-	// Parallel preconditioning
-        // PW, 17/Jul/2023
-	
-	scalarField xRev(x.size(), 0);
-
-	// Coupled boundary update
-        {
-            matrix_.initMatrixInterfaces
-            (
-                coupleBouCoeffs_,
-                interfaces_,
-                x,
-                xRev,              // put result into xCorr
-                cmpt,
-                false
-            );
-
-            matrix_.updateMatrixInterfaces
-            (
-                coupleBouCoeffs_,
-                interfaces_,
-                x,
-                xRev,              // put result into xCorr
-                cmpt,
-                false
-            );
-
-            // Multiply with inverse diag to precondition
-            x += xRev*preconDiag_;
-        }
     }
 }
 
 
-void Foam::ILU0After::preconditionT
+void Foam::ILU0Before::preconditionT
 (
     scalarField& x,
     const scalarField& b,
@@ -283,13 +284,13 @@ void Foam::ILU0After::preconditionT
     {
         FatalErrorIn
         (
-            "void ILU0After::precondition\n"
+            "void ILU0Before::precondition\n"
             "(\n"
             "    scalarField& x,\n"
             "    const scalarField& b,\n"
             "    const direction cmpt\n"
             ") const"
-        )   << "Calling ILU0After on a symetric matrix.  "
+        )   << "Calling ILU0Before on a symetric matrix.  "
             << "Please use CholeskyPrecon instead"
             << abort(FatalError);
     }
@@ -317,6 +318,36 @@ void Foam::ILU0After::preconditionT
 
     if (matrix_.asymmetric())
     {
+        // Parallel preconditioning
+        // PW, 17/Jul/2023
+
+        scalarField xCorr(x.size(), 0);
+
+        //Coupled boundary update
+        {
+            matrix_.initMatrixInterfaces
+            (
+                coupleBouCoeffs_,
+                interfaces_,
+                x,
+                xCorr,               // put result into xCorr
+                cmpt,
+                false
+            );
+
+            matrix_.updateMatrixInterfaces
+            (
+                coupleBouCoeffs_,
+                interfaces_,
+                x,
+                xCorr,               // put result into xCorr
+                cmpt,
+                false
+            );
+
+            // Multiply with inverse diag to precondition
+            x += xCorr*preconDiag_;
+        }
 	
         const unallocLabelList& upperAddr = matrix_.lduAddr().upperAddr();
         const unallocLabelList& lowerAddr = matrix_.lduAddr().lowerAddr();
@@ -344,37 +375,6 @@ void Foam::ILU0After::preconditionT
             x[lowerAddr[losortIndex]] -=
                 preconDiag_[lowerAddr[losortIndex]]*
                 lower[losortIndex]*x[upperAddr[losortIndex]];
-        }
-
-	// Parallel preconditioning
-        // PW, 17/Jul/2023
-	
-	scalarField xRev(x.size(), 0);
-
-	// Coupled boundary update
-        {
-            matrix_.initMatrixInterfaces
-            (
-                coupleBouCoeffs_,
-                interfaces_,
-                x,
-                xRev,               // put result into xCorr
-                cmpt,
-                false
-            );
-
-            matrix_.updateMatrixInterfaces
-            (
-                coupleBouCoeffs_,
-                interfaces_,
-                x,
-                xRev,               // put result into xCorr
-                cmpt,
-                false
-            );
-
-            // Multiply with inverse diag to precondition
-            x += xRev*preconDiag_;
         }
     }
 }

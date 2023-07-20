@@ -1,4 +1,5 @@
-/*---------------------------------------------------------------------------*\
+
+/*---------------------------------------------------------------------------* \
   =========                 |
   \\      /  F ield         | foam-extend: Open Source CFD
    \\    /   O peration     | Version:     5.0
@@ -22,7 +23,7 @@ License
     along with foam-extend.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    ILUC0BeforeAfter
+    ILUC0After
 
 Description
     ILU preconditioning without fill in based on Crout algorithm. L and U are
@@ -36,31 +37,31 @@ Author
 
 \*---------------------------------------------------------------------------*/
 
-#include "ILUC0BeforeAfter.H"
+#include "ILUC0After.H"
 #include "addToRunTimeSelectionTable.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
 namespace Foam
 {
-    defineTypeNameAndDebug(ILUC0BeforeAfter, 0);
+    defineTypeNameAndDebug(ILUC0After, 0);
 
     // Register with symmetric and asymmetric run-time selection table
     // HJ and VV, 31/Oct/2017
     lduPreconditioner::
-        addsymMatrixConstructorToTable<ILUC0BeforeAfter>
-        addILUC0BeforeAfterditionerSymMatrixConstructorToTable_;
+        addsymMatrixConstructorToTable<ILUC0After>
+        addILUC0AfterditionerSymMatrixConstructorToTable_;
 
     lduPreconditioner::
-        addasymMatrixConstructorToTable<ILUC0BeforeAfter>
-        addILUC0BeforeAfterditionerAsymMatrixConstructorToTable_;
+        addasymMatrixConstructorToTable<ILUC0After>
+        addILUC0AfterditionerAsymMatrixConstructorToTable_;
 }
 
 
 // * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
 
 
-void Foam::ILUC0BeforeAfter::calcFactorization()
+void Foam::ILUC0After::calcFactorization()
 {
     if (!matrix_.diagonal())
     {
@@ -221,7 +222,7 @@ void Foam::ILUC0BeforeAfter::calcFactorization()
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-Foam::ILUC0BeforeAfter::ILUC0BeforeAfter
+Foam::ILUC0After::ILUC0After
 (
     const lduMatrix& matrix,
     const FieldField<Field, scalar>& coupleBouCoeffs,
@@ -248,7 +249,7 @@ Foam::ILUC0BeforeAfter::ILUC0BeforeAfter
 }
 
 
-Foam::ILUC0BeforeAfter::ILUC0BeforeAfter
+Foam::ILUC0After::ILUC0After
 (
     const lduMatrix& matrix,
     const FieldField<Field, scalar>& coupleBouCoeffs,
@@ -276,13 +277,13 @@ Foam::ILUC0BeforeAfter::ILUC0BeforeAfter
 
 // * * * * * * * * * * * * * * * * Destructor  * * * * * * * * * * * * * * * //
 
-Foam::ILUC0BeforeAfter::~ILUC0BeforeAfter()
+Foam::ILUC0After::~ILUC0After()
 {}
 
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-void Foam::ILUC0BeforeAfter::precondition
+void Foam::ILUC0After::precondition
 (
     scalarField& x,
     const scalarField& b,
@@ -305,38 +306,6 @@ void Foam::ILUC0BeforeAfter::precondition
 
         label losortIndexI;
         label rowI;
-
-
-        // Parallel preconditioning
-        // HJ, 19/Jun/2017
-
-        scalarField xCorr(x.size(), 0);
-
-        // Coupled boundary update
-        {
-            matrix_.initMatrixInterfaces
-            (
-                coupleBouCoeffs_,
-                interfaces_,
-                x,
-                xCorr,               // put result into xCorr
-                cmpt,
-                false
-            );
-
-            matrix_.updateMatrixInterfaces
-            (
-                coupleBouCoeffs_,
-                interfaces_,
-                x,
-                xCorr,               // put result into xCorr
-                cmpt,
-                false
-            );
-
-            // Multiply with inverse diag to precondition
-            x -= xCorr*preconDiag_;
-        }
 
         // Forward substitution loop
         forAll (preconLower_, coeffI)
@@ -365,10 +334,24 @@ void Foam::ILUC0BeforeAfter::precondition
             x[rowI] -=
                 preconUpper_[coeffI]*x[upperAddr[coeffI]]*preconDiag_[rowI];
         }
+	
+        // Parallel preconditioning
+        // PW, 20/Jul/2023
 
-	xCorr = 0;
+        scalarField xCorr(x.size(), 0);
+
         // Coupled boundary update
         {
+            matrix_.initMatrixInterfaces
+            (
+                coupleBouCoeffs_,
+                interfaces_,
+                x,
+                xCorr,               // put result into xCorr
+                cmpt,
+                false
+            );
+
             matrix_.updateMatrixInterfaces
             (
                 coupleBouCoeffs_,
@@ -380,16 +363,16 @@ void Foam::ILUC0BeforeAfter::precondition
             );
 
             // Multiply with inverse diag to precondition
-            x -= xCorr*preconDiag_;
+            x += xCorr*preconDiag_;
         }
     }
     else
     {
         WarningIn
         (
-            "void ILUC0BeforeAfter::precondition"
+            "void ILUC0After::precondition"
             "(scalarField& x, const scalarField& b, const direction cmpt)"
-        )   << "Unnecessary use of ILUC0BeforeAfter preconditioner for diagonal matrix. "
+        )   << "Unnecessary use of ILUC0After preconditioner for diagonal matrix. "
             << nl
             << "Use diagonal preconditioner instead."
             << endl;
@@ -403,7 +386,7 @@ void Foam::ILUC0BeforeAfter::precondition
 }
 
 
-void Foam::ILUC0BeforeAfter::preconditionT
+void Foam::ILUC0After::preconditionT
 (
     scalarField& x,
     const scalarField& b,
@@ -431,8 +414,32 @@ void Foam::ILUC0BeforeAfter::preconditionT
         label losortIndexI;
         label rowI;
 
+        // Forward substitution loop
+        forAll (preconUpper_, coeffI)
+        {
+            // Get current losortIndex to ensure row by row access
+            losortIndexI = losortAddr[coeffI];
+
+            // Get row index
+            rowI = upperAddr[losortIndexI];
+
+            // Subtract already updated lower (upper transpose) part from the
+            // solution
+            x[rowI] -= preconUpper_[losortIndexI]*x[lowerAddr[losortIndexI]]*
+                preconDiag_[rowI];
+        }
+
+        // Solve L^T x = z with back substitution. L^T is unit upper triangular
+
+        // Back substitution loop
+        forAllReverse (preconLower_, coeffI)
+        {
+            // Subtract already updated upper part from the solution
+            x[lowerAddr[coeffI]] -= preconLower_[coeffI]*x[upperAddr[coeffI]];
+        }
+
         // Parallel preconditioning
-        // HJ, 19/Jun/2017
+        // PW, 20/Jul/2023
 
         scalarField xCorr(x.size(), 0);
 
@@ -459,48 +466,7 @@ void Foam::ILUC0BeforeAfter::preconditionT
             );
 
             // Multiply with inverse diag to precondition
-            x -= xCorr*preconDiag_;
-        }
-
-        // Forward substitution loop
-        forAll (preconUpper_, coeffI)
-        {
-            // Get current losortIndex to ensure row by row access
-            losortIndexI = losortAddr[coeffI];
-
-            // Get row index
-            rowI = upperAddr[losortIndexI];
-
-            // Subtract already updated lower (upper transpose) part from the
-            // solution
-            x[rowI] -= preconUpper_[losortIndexI]*x[lowerAddr[losortIndexI]]*
-                preconDiag_[rowI];
-        }
-
-        // Solve L^T x = z with back substitution. L^T is unit upper triangular
-
-        // Back substitution loop
-        forAllReverse (preconLower_, coeffI)
-        {
-            // Subtract already updated upper part from the solution
-            x[lowerAddr[coeffI]] -= preconLower_[coeffI]*x[upperAddr[coeffI]];
-        }
-
-	xCorr = 0;
-        // Coupled boundary update
-        {
-            matrix_.updateMatrixInterfaces
-            (
-                coupleBouCoeffs_,
-                interfaces_,
-                x,
-                xCorr,               // put result into xCorr
-                cmpt,
-                false
-            );
-
-            // Multiply with inverse diag to precondition
-            x -= xCorr*preconDiag_;
+            x += xCorr*preconDiag_;
         }
 	
     }
@@ -508,9 +474,9 @@ void Foam::ILUC0BeforeAfter::preconditionT
     {
         WarningIn
         (
-            "void ILUC0BeforeAfter::preconditionT"
+            "void ILUC0After::preconditionT"
             "(scalarField& x, const scalarField& b, const direction cmpt)"
-        )   << "Unnecessary use of ILUC0BeforeAfter preconditioner for diagonal matrix. "
+        )   << "Unnecessary use of ILUC0After preconditioner for diagonal matrix. "
             << nl
             << "Use diagonal preconditioner instead."
             << endl;

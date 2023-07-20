@@ -22,11 +22,11 @@ License
     along with foam-extend.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    ILUC0After
+    ILUCpAfter
 
 Description
-    ILU preconditioning without fill in based on Crout algorithm. L and U are
-    calculated and stored.
+    ILU preconditioning with arbitrary level of fill in (p), based on Crout
+    algorithm.
 
     Reference: Saad, Y.: Iterative Methods for Sparse Linear Systems (2nd
     Edition), SIAM, 2003.
@@ -36,54 +36,58 @@ Author
 
 \*---------------------------------------------------------------------------*/
 
-#include "ILUC0After.H"
+#include "ILUCpAfter.H"
 #include "addToRunTimeSelectionTable.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
 namespace Foam
 {
-    defineTypeNameAndDebug(ILUC0After, 0);
-
-    // Register with symmetric and asymmetric run-time selection table
-    // HJ and VV, 31/Oct/2017
-    lduPreconditioner::
-        addsymMatrixConstructorToTable<ILUC0After>
-        addILUC0AfterditionerSymMatrixConstructorToTable_;
+    defineTypeNameAndDebug(ILUCpAfter, 0);
 
     lduPreconditioner::
-        addasymMatrixConstructorToTable<ILUC0After>
-        addILUC0AfterditionerAsymMatrixConstructorToTable_;
+        addasymMatrixConstructorToTable<ILUCpAfter>
+        addILUCpAfterPreconditionerAsymMatrixConstructorToTable_;
+
+    // Add to symmetric constructor table as well. Cholesky with fill in would
+    // yield the same sparseness pattern as the original matrix,
+    // hence it is not implemented. VV, 10/Sep/2015.
+    lduPreconditioner::
+        addsymMatrixConstructorToTable<ILUCpAfter>
+        addILUCpAfterPreconditionerSymMatrixConstructorToTable_;
 }
 
 
 // * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
 
 
-void Foam::ILUC0After::calcFactorization()
+void Foam::ILUCpAfter::calcFactorization()
 {
     if (!matrix_.diagonal())
     {
-        // Get necessary const access to matrix addressing
-        const lduAddressing& addr = matrix_.lduAddr();
+        // Get necessary const access to extended ldu addressing
+        const extendedLduAddressing& addr = extMatrix_.extendedLduAddr();
 
-        // Get upper/lower addressing
-        const label* const __restrict__ uPtr = addr.upperAddr().begin();
-        const label* const __restrict__ lPtr = addr.lowerAddr().begin();
+        // Get upper/lower extended addressing
+        const label* const __restrict__ uPtr =
+            addr.extendedUpperAddr().begin();
+        const label* const __restrict__ lPtr =
+            addr.extendedLowerAddr().begin();
 
-        // Get owner start addressing
+        // Get extended owner start addressing
         const label* const __restrict__ ownStartPtr =
-            addr.ownerStartAddr().begin();
+            addr.extendedOwnerStartAddr().begin();
 
-        // Get losort and losort start addressing
-        const label* const __restrict__ lsrPtr = addr.losortAddr().begin();
+        // Get extended losort and losort start addressing
+        const label* const __restrict__ lsrPtr =
+            addr.extendedLosortAddr().begin();
         const label* const __restrict__ lsrStartPtr =
-            addr.losortStartAddr().begin();
+            addr.extendedLosortStartAddr().begin();
 
         // Get access to factored matrix entries
         scalar* __restrict__ diagPtr = preconDiag_.begin();
-        scalar* __restrict__ upperPtr = preconUpper_.begin();
-        scalar* __restrict__ lowerPtr = preconLower_.begin();
+        scalar* __restrict__ upperPtr = extMatrix_.extendedUpper().begin();
+        scalar* __restrict__ lowerPtr = extMatrix_.extendedLower().begin();
 
         // Get access to working fields
         scalar* __restrict__ zPtr = z_.begin();
@@ -92,8 +96,8 @@ void Foam::ILUC0After::calcFactorization()
         // Get number of rows
         const label nRows = preconDiag_.size();
 
-        // Define start and end face of this row/column, and number of non zero
-        // off diagonal entries
+        // Define start and end face ("virtual" face when extended addressing
+        // is used) of this row/column.
         label fStart, fEnd, fLsrStart, fLsrEnd;
 
         // Crout LU factorization
@@ -122,7 +126,7 @@ void Foam::ILUC0After::calcFactorization()
             fLsrStart = lsrStartPtr[rowI];
             fLsrEnd = lsrStartPtr[rowI + 1];
 
-            // Lower coeff loop (first i - loop)
+            // Lower/upper coeff loop (i - loop)
             for
             (
                 label faceLsrI = fLsrStart;
@@ -131,13 +135,13 @@ void Foam::ILUC0After::calcFactorization()
             )
             {
                 // Get losort coefficient for this face
-                const label losortIndex = lsrPtr[faceLsrI];
+                const label losortCoeff = lsrPtr[faceLsrI];
 
                 // Get corresponding row index for upper (i label)
-                const label i = lPtr[losortIndex];
+                const label i = lPtr[losortCoeff];
 
                 // Update diagonal
-                zDiag_ -= lowerPtr[losortIndex]*upperPtr[losortIndex];
+                zDiag_ -= lowerPtr[losortCoeff]*upperPtr[losortCoeff];
 
                 // Get end of row for cell i
                 const label fEndRowi = ownStartPtr[i + 1];
@@ -146,14 +150,14 @@ void Foam::ILUC0After::calcFactorization()
                 // existence of certain upper coeffs)
                 for
                 (
-                    // Diagonal is already updated (losortIndex + 1 = start)
-                    label faceI = losortIndex + 1;
+                    // Diagonal is already updated (losortCoeff + 1 = start)
+                    label faceI = losortCoeff + 1;
                     faceI < fEndRowi;
                     ++faceI
                 )
                 {
-                    zPtr[uPtr[faceI]] -= lowerPtr[losortIndex]*upperPtr[faceI];
-                    wPtr[uPtr[faceI]] -= upperPtr[losortIndex]*lowerPtr[faceI];
+                    zPtr[uPtr[faceI]] -= lowerPtr[losortCoeff]*upperPtr[faceI];
+                    wPtr[uPtr[faceI]] -= upperPtr[losortCoeff]*lowerPtr[faceI];
                 }
             }
 
@@ -188,17 +192,17 @@ void Foam::ILUC0After::calcFactorization()
             )
             {
                 // Get losort coefficient for this face
-                const label losortIndex = lsrPtr[faceLsrI];
+                const label losortCoeff = lsrPtr[faceLsrI];
 
                 // Get corresponding row index for upper (i label)
-                const label i = lPtr[losortIndex];
+                const label i = lPtr[losortCoeff];
 
                 // Get end of row for cell i
                 const label fEndRowi = ownStartPtr[i + 1];
 
                 for
                 (
-                    label faceI = losortIndex + 1;
+                    label faceI = losortCoeff + 1;
                     faceI < fEndRowi;
                     ++faceI
                 )
@@ -221,7 +225,7 @@ void Foam::ILUC0After::calcFactorization()
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-Foam::ILUC0After::ILUC0After
+Foam::ILUCpAfter::ILUCpAfter
 (
     const lduMatrix& matrix,
     const FieldField<Field, scalar>& coupleBouCoeffs,
@@ -237,35 +241,15 @@ Foam::ILUC0After::ILUC0After
         coupleIntCoeffs,
         interfaces
     ),
-    preconDiag_(matrix_.diag()),
-    preconLower_(matrix.lower()),
-    preconUpper_(matrix.upper()),
-    zDiag_(0),
-    z_(preconDiag_.size(), 0),
-    w_(preconDiag_.size(), 0)
-{
-    calcFactorization();
-}
-
-
-Foam::ILUC0After::ILUC0After
-(
-    const lduMatrix& matrix,
-    const FieldField<Field, scalar>& coupleBouCoeffs,
-    const FieldField<Field, scalar>& coupleIntCoeffs,
-    const lduInterfaceFieldPtrsList& interfaces
-)
-:
-    lduPreconditioner
+    extMatrix_
     (
         matrix,
-        coupleBouCoeffs,
-        coupleIntCoeffs,
-        interfaces
+        matrix.mesh().lduAddr().extendedAddr
+        (
+            readLabel(dict.lookup("fillInLevel"))
+        )
     ),
     preconDiag_(matrix_.diag()),
-    preconLower_(matrix.lower()),
-    preconUpper_(matrix.upper()),
     zDiag_(0),
     z_(preconDiag_.size(), 0),
     w_(preconDiag_.size(), 0)
@@ -276,13 +260,13 @@ Foam::ILUC0After::ILUC0After
 
 // * * * * * * * * * * * * * * * * Destructor  * * * * * * * * * * * * * * * //
 
-Foam::ILUC0After::~ILUC0After()
+Foam::ILUCpAfter::~ILUCpAfter()
 {}
 
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-void Foam::ILUC0After::precondition
+void Foam::ILUCpAfter::precondition
 (
     scalarField& x,
     const scalarField& b,
@@ -292,29 +276,33 @@ void Foam::ILUC0After::precondition
     if (!matrix_.diagonal())
     {
         // Get matrix addressing
-        const lduAddressing& addr = matrix_.lduAddr();
-        const unallocLabelList& upperAddr = addr.upperAddr();
-        const unallocLabelList& lowerAddr = addr.lowerAddr();
-        const unallocLabelList& losortAddr = addr.losortAddr();
+        const extendedLduAddressing& addr = extMatrix_.extendedLduAddr();
+        const unallocLabelList& upperAddr = addr.extendedUpperAddr();
+        const unallocLabelList& lowerAddr = addr.extendedLowerAddr();
+        const unallocLabelList& losortAddr = addr.extendedLosortAddr();
 
-        // Solve Lz = b with forward substitution. preconLower_ is chosen to
-        // be unit triangular. z does not need to be stored
+        // Get upper and lower matrix factors
+        const scalarField& lower = extMatrix_.extendedLower();
+        const scalarField& upper = extMatrix_.extendedUpper();
+
+        // Solve Lz = b with forward substitution. lower is chosen to be unit
+        // triangular. z does not need to be stored
 
         // Initialize x field
         x = b;
 
-        label losortIndexI;
+        label losortCoeffI;
         label rowI;
 
         // Forward substitution loop
-        forAll (preconLower_, coeffI)
+        forAll (lower, coeffI)
         {
-            // Get current losortIndex to ensure row by row access
-            losortIndexI = losortAddr[coeffI];
+            // Get current losortCoeff to ensure row by row access
+            losortCoeffI = losortAddr[coeffI];
 
             // Subtract already updated lower part from the solution
-            x[upperAddr[losortIndexI]] -=
-                preconLower_[losortIndexI]*x[lowerAddr[losortIndexI]];
+            x[upperAddr[losortCoeffI]] -=
+                lower[losortCoeffI]*x[lowerAddr[losortCoeffI]];
         }
 
         // Solve Ux = b with back substitution. U is chosen to be upper
@@ -324,18 +312,17 @@ void Foam::ILUC0After::precondition
         x *= preconDiag_;
 
         // Back substitution loop
-        forAllReverse (preconUpper_, coeffI)
+        forAllReverse (upper, coeffI)
         {
             // Get row index
             rowI = lowerAddr[coeffI];
 
             // Subtract already updated upper part from the solution
-            x[rowI] -=
-                preconUpper_[coeffI]*x[upperAddr[coeffI]]*preconDiag_[rowI];
+            x[rowI] -= upper[coeffI]*x[upperAddr[coeffI]]*preconDiag_[rowI];
         }
 	
         // Parallel preconditioning
-        // HJ, 19/Jun/2017
+        // PW, 20/Jul/2023
 
         scalarField xCorr(x.size(), 0);
 
@@ -362,16 +349,16 @@ void Foam::ILUC0After::precondition
             );
 
             // Multiply with inverse diag to precondition
-            x -= xCorr*preconDiag_;
+            x += xCorr*preconDiag_;
         }
     }
     else
     {
         WarningIn
         (
-            "void ILUC0After::precondition"
+            "void ILUCpAfter::precondition"
             "(scalarField& x, const scalarField& b, const direction cmpt)"
-        )   << "Unnecessary use of ILUC0After preconditioner for diagonal matrix. "
+        )   << "Unnecessary use of ILUCpAfter preconditioner for diagonal matrix. "
             << nl
             << "Use diagonal preconditioner instead."
             << endl;
@@ -385,7 +372,7 @@ void Foam::ILUC0After::precondition
 }
 
 
-void Foam::ILUC0After::preconditionT
+void Foam::ILUCpAfter::preconditionT
 (
     scalarField& x,
     const scalarField& b,
@@ -395,12 +382,16 @@ void Foam::ILUC0After::preconditionT
     if (!matrix_.diagonal())
     {
         // Get matrix addressing
-        const lduAddressing& addr = matrix_.lduAddr();
-        const unallocLabelList& upperAddr = addr.upperAddr();
-        const unallocLabelList& lowerAddr = addr.lowerAddr();
-        const unallocLabelList& losortAddr = addr.losortAddr();
+        const extendedLduAddressing& addr = extMatrix_.extendedLduAddr();
+        const unallocLabelList& upperAddr = addr.extendedUpperAddr();
+        const unallocLabelList& lowerAddr = addr.extendedLowerAddr();
+        const unallocLabelList& losortAddr = addr.extendedLosortAddr();
 
-        // Solve U^T z = b with forward substitution. preconLower_ is chosen to
+        // Get upper and lower matrix factors
+        const scalarField& lower = extMatrix_.extendedLower();
+        const scalarField& upper = extMatrix_.extendedUpper();
+
+        // Solve U^T z = b with forward substitution. lower is chosen to
         // be unit triangular - U^T (transpose U) "contains" diagonal entries. z
         // does not need to be stored.
 
@@ -410,35 +401,35 @@ void Foam::ILUC0After::preconditionT
             x[i] = b[i]*preconDiag_[i];
         }
 
-        label losortIndexI;
+        label losortCoeffI;
         label rowI;
 
         // Forward substitution loop
-        forAll (preconUpper_, coeffI)
+        forAll (upper, coeffI)
         {
-            // Get current losortIndex to ensure row by row access
-            losortIndexI = losortAddr[coeffI];
+            // Get current losortCoeff to ensure row by row access
+            losortCoeffI = losortAddr[coeffI];
 
             // Get row index
-            rowI = upperAddr[losortIndexI];
+            rowI = upperAddr[losortCoeffI];
 
             // Subtract already updated lower (upper transpose) part from the
             // solution
-            x[rowI] -= preconUpper_[losortIndexI]*x[lowerAddr[losortIndexI]]*
+            x[rowI] -= upper[losortCoeffI]*x[lowerAddr[losortCoeffI]]*
                 preconDiag_[rowI];
         }
 
         // Solve L^T x = z with back substitution. L^T is unit upper triangular
 
         // Back substitution loop
-        forAllReverse (preconLower_, coeffI)
+        forAllReverse (lower, coeffI)
         {
             // Subtract already updated upper part from the solution
-            x[lowerAddr[coeffI]] -= preconLower_[coeffI]*x[upperAddr[coeffI]];
+            x[lowerAddr[coeffI]] -= lower[coeffI]*x[upperAddr[coeffI]];
         }
 
         // Parallel preconditioning
-        // HJ, 19/Jun/2017
+        // PW, 20/Jul/2023
 
         scalarField xCorr(x.size(), 0);
 
@@ -465,17 +456,16 @@ void Foam::ILUC0After::preconditionT
             );
 
             // Multiply with inverse diag to precondition
-            x -= xCorr*preconDiag_;
+            x += xCorr*preconDiag_;
         }
-	
     }
     else
     {
         WarningIn
         (
-            "void ILUC0After::preconditionT"
+            "void ILUCpAfter::preconditionT"
             "(scalarField& x, const scalarField& b, const direction cmpt)"
-        )   << "Unnecessary use of ILUC0After preconditioner for diagonal matrix. "
+        )   << "Unnecessary use of ILUCpAfter preconditioner for diagonal matrix. "
             << nl
             << "Use diagonal preconditioner instead."
             << endl;

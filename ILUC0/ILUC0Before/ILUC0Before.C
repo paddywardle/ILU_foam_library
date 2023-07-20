@@ -308,7 +308,7 @@ void Foam::ILUC0Before::precondition
 
 
         // Parallel preconditioning
-        // HJ, 19/Jun/2017
+        // PW, 20/Jul/2023
 
         scalarField xCorr(x.size(), 0);
 
@@ -335,7 +335,7 @@ void Foam::ILUC0Before::precondition
             );
 
             // Multiply with inverse diag to precondition
-            x -= xCorr*preconDiag_;
+            x += xCorr*preconDiag_;
         }
 
         // Forward substitution loop
@@ -415,7 +415,7 @@ void Foam::ILUC0Before::preconditionT
         label rowI;
 
         // Parallel preconditioning
-        // HJ, 19/Jun/2017
+        // PW, 20/Jul/2023
 
         scalarField xCorr(x.size(), 0);
 
@@ -442,7 +442,7 @@ void Foam::ILUC0Before::preconditionT
             );
 
             // Multiply with inverse diag to precondition
-            x -= xCorr*preconDiag_;
+            x += xCorr*preconDiag_;
         }
 
         // Forward substitution loop

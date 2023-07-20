@@ -4,4 +4,7 @@ ILU0After.o\
 ILU0BeforeAfter.o\
 ILUC0Before.o\
 ILUC0After.o\
-ILUC0BeforeAfter.o
+ILUC0BeforeAfter.o\
+ILUCpBefore.o\
+ILUCpAfter.o\
+ILUCpBeforeAfter.o

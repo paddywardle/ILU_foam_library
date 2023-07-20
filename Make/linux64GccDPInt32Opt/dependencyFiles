@@ -1,7 +1,10 @@
 DEPENDENCIES = \
-ILU0Before/ILU0Before.dep\
-ILU0After/ILU0After.dep\
-ILU0BeforeAfter/ILU0BeforeAfter.dep\
-ILUC0Before/ILUC0Before.dep\
-ILUC0After/ILUC0After.dep\
-ILUC0BeforeAfter/ILUC0BeforeAfter.dep
+ILU0/ILU0Before/ILU0Before.dep\
+ILU0/ILU0After/ILU0After.dep\
+ILU0/ILU0BeforeAfter/ILU0BeforeAfter.dep\
+ILUC0/ILUC0Before/ILUC0Before.dep\
+ILUC0/ILUC0After/ILUC0After.dep\
+ILUC0/ILUC0BeforeAfter/ILUC0BeforeAfter.dep\
+ILUCp/ILUCpBefore/ILUCpBefore.dep\
+ILUCp/ILUCpAfter/ILUCpAfter.dep\
+ILUCp/ILUCpBeforeAfter/ILUCpBeforeAfter.dep

@@ -80,7 +80,7 @@ void Foam::ILU0BeforeAfter::calcPreconDiag()
                     // Note: change of the sign compared to main loop below
                     // This is because lower = -intCoeffs
                     // HJ and VV, 19/Jun/2017
-                    // Note: sign fixed by HJ, 19/Jun/2017
+                    // Note: sign fixed by PW, 20/Jul/2023
                     preconDiag_[fc[coeffI]] +=
                         bouCoeffs[coeffI]*intCoeffs[coeffI]/
                         preconDiag_[fc[coeffI]];
@@ -212,7 +212,7 @@ void Foam::ILU0BeforeAfter::precondition
     if (matrix_.asymmetric())
     {
         // Parallel preconditioning
-        // HJ, 19/Jun/2017
+        // PW, 20/Jul/2023
 
         scalarField xCorr(x.size(), 0);
 
@@ -260,34 +260,6 @@ void Foam::ILU0BeforeAfter::precondition
                 preconDiag_[upperAddr[losortIndex]]*
                 lower[losortIndex]*x[lowerAddr[losortIndex]];
         }
-
-        // scalarField xBet(x.size(), 0);
-
-        // // Coupled boundary update
-        // {
-        //     matrix_.initMatrixInterfaces
-        //     (
-        //         coupleBouCoeffs_,
-        //         interfaces_,
-        //         x,
-        //         xBet,               // put result into xCorr
-        //         cmpt,
-        //         false
-        //     );
-
-        //     matrix_.updateMatrixInterfaces
-        //     (
-        //         coupleBouCoeffs_,
-        //         interfaces_,
-        //         x,
-        //         xBet,               // put result into xCorr
-        //         cmpt,
-        //         false
-        //     );
-
-        //     // Multiply with inverse diag to precondition
-        //     x += xBet*preconDiag_;
-        // }
 
         forAllReverse (upper, coeffI)
         {
@@ -373,7 +345,7 @@ void Foam::ILU0BeforeAfter::preconditionT
     if (matrix_.asymmetric())
     {
         // Parallel preconditioning
-        // HJ, 19/Jun/2017
+        // PW, 20/Jul/2023
 
         scalarField xCorr(x.size(), 0);
 
@@ -420,34 +392,6 @@ void Foam::ILU0BeforeAfter::preconditionT
                 preconDiag_[upperAddr[coeffI]]*
                 upper[coeffI]*x[lowerAddr[coeffI]];
         }
-
-        // scalarField xBet(x.size(), 0);
-
-        // // Coupled boundary update
-        // {
-        //     matrix_.initMatrixInterfaces
-        //     (
-        //         coupleBouCoeffs_,
-        //         interfaces_,
-        //         x,
-        //         xBet,               // put result into xCorr
-        //         cmpt,
-        //         false
-        //     );
-
-        //     matrix_.updateMatrixInterfaces
-        //     (
-        //         coupleBouCoeffs_,
-        //         interfaces_,
-        //         x,
-        //         xBet,               // put result into xCorr
-        //         cmpt,
-        //         false
-        //     );
-
-        //     // Multiply with inverse diag to precondition
-        //     x += xBet*preconDiag_;
-        // }
 
         forAllReverse (upper, coeffI)
         {
