@@ -38,6 +38,7 @@ Author
 
 #include "ILUC0Before.H"
 #include "addToRunTimeSelectionTable.H"
+//#include "processorLduInterfaceField.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -62,10 +63,25 @@ namespace Foam
 
 void Foam::ILUC0Before::calcFactorization()
 {
+
+  // ADD preconCoupleBouCoeffs as instance variables so they can be used in precondition and preconditionT, within their init and update functions
+
+	  // Info << "Faces" << endl;
+	  // Info << interfaces_[interfaceI].coupledInterface().faceCells() << endl;
+	  // Info << "Bou" << endl;
+	  // Info << coupleBouCoeffs_[interfaceI][5] << endl;
+	  // Info << "Int" << endl;
+	  // Info << coupleIntCoeffs_[interfaceI][5] << endl;
+	  // Info << "Precon" << endl;
+	  // Info << preconCoupleBouCoeffs[interfaceI][5] << endl;
+	  // preconCoupleBouCoeffs[interfaceI][5] = 5;
+	  // Info << preconCoupleBouCoeffs[interfaceI][5] << endl;
+
     if (!matrix_.diagonal())
     {
         // Get necessary const access to matrix addressing
         const lduAddressing& addr = matrix_.lduAddr();
+	//const unallocLabelList& faceCells = interfaces_.faceCells();
 
         // Get upper/lower addressing
         const label* const __restrict__ uPtr = addr.upperAddr().begin();
@@ -208,6 +224,20 @@ void Foam::ILUC0Before::calcFactorization()
                 }
             }
         }
+	FieldField<Field, scalar> preconCoupleBouCoeffs=coupleBouCoeffs_;
+	forAll (interfaces_, interfaceI)
+	  {
+	    if (interfaces_.set(interfaceI))
+	      {
+		const unallocLabelList& faceCells=interfaces_[interfaceI].coupledInterface().faceCells();
+
+		forAll(faceCells, elemI)
+		  {
+		    // update preconCoupleBouCoeffs by preconditioning them
+		    preconCoupleBouCoeffs[interfaceI][elemI] = 5;
+		  }
+	      }
+	  }
     }
     else
     {
