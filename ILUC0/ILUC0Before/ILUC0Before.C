@@ -38,7 +38,6 @@ Author
 
 #include "ILUC0Before.H"
 #include "addToRunTimeSelectionTable.H"
-//#include "processorLduInterfaceField.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -224,7 +223,7 @@ void Foam::ILUC0Before::calcFactorization()
                 }
             }
         }
-	FieldField<Field, scalar> preconCoupleBouCoeffs=coupleBouCoeffs_;
+	//ieldField<Field, scalar> preconCoupleBouCoeffs=coupleBouCoeffs_;
 	forAll (interfaces_, interfaceI)
 	  {
 	    if (interfaces_.set(interfaceI))
@@ -234,7 +233,7 @@ void Foam::ILUC0Before::calcFactorization()
 		forAll(faceCells, elemI)
 		  {
 		    // update preconCoupleBouCoeffs by preconditioning them
-		    preconCoupleBouCoeffs[interfaceI][elemI] = 5;
+		    preconCoupleBouCoeffs_[interfaceI][elemI] = 5;
 		  }
 	      }
 	  }
@@ -270,6 +269,7 @@ Foam::ILUC0Before::ILUC0Before
     preconDiag_(matrix_.diag()),
     preconLower_(matrix.lower()),
     preconUpper_(matrix.upper()),
+    preconCoupleBouCoeffs_(coupleBouCoeffs),
     zDiag_(0),
     z_(preconDiag_.size(), 0),
     w_(preconDiag_.size(), 0)
@@ -296,6 +296,7 @@ Foam::ILUC0Before::ILUC0Before
     preconDiag_(matrix_.diag()),
     preconLower_(matrix.lower()),
     preconUpper_(matrix.upper()),
+    preconCoupleBouCoeffs_(coupleBouCoeffs),
     zDiag_(0),
     z_(preconDiag_.size(), 0),
     w_(preconDiag_.size(), 0)

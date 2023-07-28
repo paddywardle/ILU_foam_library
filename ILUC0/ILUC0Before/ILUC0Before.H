@@ -68,6 +68,9 @@ class ILUC0Before
         //- Strictly upper part
         scalarField preconUpper_;
 
+        // Coupled Boundaries 
+        FieldField<Field, scalar> preconCoupleBouCoeffs_;
+
         //- Temporary working diagonal
         scalar zDiag_;
 
