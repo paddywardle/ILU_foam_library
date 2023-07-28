@@ -80,7 +80,7 @@ void Foam::ILU0BeforeAfter::calcPreconDiag()
                     // Note: change of the sign compared to main loop below
                     // This is because lower = -intCoeffs
                     // HJ and VV, 19/Jun/2017
-                    // Note: sign fixed by PW, 20/Jul/2023
+                    // Note: sign fixed 
                     preconDiag_[fc[coeffI]] +=
                         bouCoeffs[coeffI]*intCoeffs[coeffI]/
                         preconDiag_[fc[coeffI]];
@@ -211,13 +211,23 @@ void Foam::ILU0BeforeAfter::precondition
 
     if (matrix_.asymmetric())
     {
+
+        const unallocLabelList& upperAddr = matrix_.lduAddr().upperAddr();
+        const unallocLabelList& lowerAddr = matrix_.lduAddr().lowerAddr();
+        const unallocLabelList& losortAddr = matrix_.lduAddr().losortAddr();
+
+        // Get off-diagonal matrix coefficients
+        const scalarField& upper = matrix_.upper();
+        const scalarField& lower = matrix_.lower();
+
+        label losortIndex;
+
         // Parallel preconditioning
         // PW, 20/Jul/2023
-
-        scalarField xCorr(x.size(), 0);
-
         // Coupled boundary update
         {
+            scalarField xCorr(x.size(), 0);
+
             matrix_.initMatrixInterfaces
             (
                 coupleBouCoeffs_,
@@ -239,18 +249,9 @@ void Foam::ILU0BeforeAfter::precondition
             );
 
             // Multiply with inverse diag to precondition
-            x += xCorr*preconDiag_;
+	    // Note: Don't need to multiply by lower or upper as updateMatrixInterfaces multiplies results by coupleBouCoeffs_
+	    x += preconDiag_*xCorr;
         }
-	
-        const unallocLabelList& upperAddr = matrix_.lduAddr().upperAddr();
-        const unallocLabelList& lowerAddr = matrix_.lduAddr().lowerAddr();
-        const unallocLabelList& losortAddr = matrix_.lduAddr().losortAddr();
-
-        // Get off-diagonal matrix coefficients
-        const scalarField& upper = matrix_.upper();
-        const scalarField& lower = matrix_.lower();
-
-        label losortIndex;
 
         forAll (lower, coeffI)
         {
@@ -267,11 +268,11 @@ void Foam::ILU0BeforeAfter::precondition
                 preconDiag_[lowerAddr[coeffI]]*
                 upper[coeffI]*x[upperAddr[coeffI]];
         }
-
-	scalarField xRev(x.size(), 0);
 	
         // Coupled boundary update
         {
+            scalarField xRev(x.size(), 0);
+
             matrix_.initMatrixInterfaces
             (
                 coupleBouCoeffs_,
@@ -293,7 +294,8 @@ void Foam::ILU0BeforeAfter::precondition
             );
 
             // Multiply with inverse diag to precondition
-            x += xRev*preconDiag_;
+	    // Note: Don't need to multiply by lower or upper as updateMatrixInterfaces multiplies results by coupleBouCoeffs_
+	    x += preconDiag_*xRev;
         }
     }
 }
@@ -344,13 +346,23 @@ void Foam::ILU0BeforeAfter::preconditionT
 
     if (matrix_.asymmetric())
     {
+
+        const unallocLabelList& upperAddr = matrix_.lduAddr().upperAddr();
+        const unallocLabelList& lowerAddr = matrix_.lduAddr().lowerAddr();
+        const unallocLabelList& losortAddr = matrix_.lduAddr().losortAddr();
+
+        // Get off-diagonal matrix coefficients
+        const scalarField& upper = matrix_.upper();
+        const scalarField& lower = matrix_.lower();
+
+        label losortIndex;
+
         // Parallel preconditioning
         // PW, 20/Jul/2023
-
-        scalarField xCorr(x.size(), 0);
-
         //Coupled boundary update
         {
+            scalarField xCorr(x.size(), 0);
+
             matrix_.initMatrixInterfaces
             (
                 coupleBouCoeffs_,
@@ -372,18 +384,9 @@ void Foam::ILU0BeforeAfter::preconditionT
             );
 
             // Multiply with inverse diag to precondition
-            x += xCorr*preconDiag_;
+	    // Note: Don't need to multiply by lower or upper as updateMatrixInterfaces multiplies results by coupleBouCoeffs_
+	    x += preconDiag_*xCorr;
         }
-	
-        const unallocLabelList& upperAddr = matrix_.lduAddr().upperAddr();
-        const unallocLabelList& lowerAddr = matrix_.lduAddr().lowerAddr();
-        const unallocLabelList& losortAddr = matrix_.lduAddr().losortAddr();
-
-        // Get off-diagonal matrix coefficients
-        const scalarField& upper = matrix_.upper();
-        const scalarField& lower = matrix_.lower();
-
-        label losortIndex;
 
         forAll (lower, coeffI)
         {
@@ -402,11 +405,11 @@ void Foam::ILU0BeforeAfter::preconditionT
                 preconDiag_[lowerAddr[losortIndex]]*
                 lower[losortIndex]*x[upperAddr[losortIndex]];
         }
-
-	scalarField xRev(x.size(), 0);
 	
         // Coupled boundary update
         {
+    	    scalarField xRev(x.size(), 0);
+
             matrix_.initMatrixInterfaces
             (
                 coupleBouCoeffs_,
@@ -428,7 +431,8 @@ void Foam::ILU0BeforeAfter::preconditionT
             );
 
             // Multiply with inverse diag to precondition
-            x += xRev*preconDiag_;
+	    // Note: Don't need to multiply by lower or upper as updateMatrixInterfaces multiplies results by coupleBouCoeffs_
+	    x += preconDiag_*xRev;
         }
     }
 }

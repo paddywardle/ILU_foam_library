@@ -336,8 +336,7 @@ void Foam::ILUC0After::precondition
         }
 	
         // Parallel preconditioning
-        // PW, 20/Jul/2023
-
+	
         scalarField xCorr(x.size(), 0);
 
         // Coupled boundary update

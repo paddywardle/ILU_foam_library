@@ -221,10 +221,9 @@ void Foam::ILU0After::precondition
         const scalarField& lower = matrix_.lower();
 
         label losortIndex;
-
         forAll (lower, coeffI)
         {
-            losortIndex = losortAddr[coeffI];
+            losortIndex = losortAddr[coeffI];	    
 
             x[upperAddr[losortIndex]] -=
                 preconDiag_[upperAddr[losortIndex]]*
@@ -241,8 +240,10 @@ void Foam::ILU0After::precondition
 	// Parallel preconditioning
         // PW, 17/Jul/2023
 	
-	scalarField xRev(x.size(), 0);
+	//scalarField xRev(x.size(), 0);
 
+        autoPtr<scalarField> xRev(new scalarField(x.size(), 0.0));
+	
 	// Coupled boundary update
         {
             matrix_.initMatrixInterfaces
@@ -250,7 +251,7 @@ void Foam::ILU0After::precondition
                 coupleBouCoeffs_,
                 interfaces_,
                 x,
-                xRev,              // put result into xCorr
+                xRev(),              // put result into xCorr
                 cmpt,
                 false
             );
@@ -260,14 +261,16 @@ void Foam::ILU0After::precondition
                 coupleBouCoeffs_,
                 interfaces_,
                 x,
-                xRev,              // put result into xCorr
+                xRev(),              // put result into xCorr
                 cmpt,
                 false
             );
 
             // Multiply with inverse diag to precondition
-            x += xRev*preconDiag_;
+	    // Note: Don't need to multiply by lower or upper as updateMatrixInterfaces multiplies results by coupleBouCoeffs_
+	    x += preconDiag_*xRev();
         }
+	xRev.clear();
     }
 }
 
@@ -347,10 +350,14 @@ void Foam::ILU0After::preconditionT
         }
 
 	// Parallel preconditioning
-        // PW, 17/Jul/2023
-	
-	scalarField xRev(x.size(), 0);
+	//tmp<scalarField> xRev(xy);
+	// tmp<scalarField> xRev(new scalarField(x.size(), 0.0));
+	// Info << xRev << endl;
+	// xRev.clear();
 
+        //scalarField xRev(x.size(), 0);
+	autoPtr<scalarField> xRev(new scalarField(x.size(), 0.0));
+	
 	// Coupled boundary update
         {
             matrix_.initMatrixInterfaces
@@ -358,7 +365,7 @@ void Foam::ILU0After::preconditionT
                 coupleBouCoeffs_,
                 interfaces_,
                 x,
-                xRev,               // put result into xCorr
+                xRev(),               // put result into xCorr
                 cmpt,
                 false
             );
@@ -368,14 +375,16 @@ void Foam::ILU0After::preconditionT
                 coupleBouCoeffs_,
                 interfaces_,
                 x,
-                xRev,               // put result into xCorr
+                xRev(),              // put result into xCorr
                 cmpt,
                 false
             );
 
-            // Multiply with inverse diag to precondition
-            x += xRev*preconDiag_;
+            // Multiply with inverse diag to precondition <- ADD loop here to get boundary faces
+	    // Note: Don't need to multiply by lower or upper as updateMatrixInterfaces multiplies results by coupleBouCoeffs_
+	    x += preconDiag_*xRev();
         }
+	xRev.clear();
     }
 }
 

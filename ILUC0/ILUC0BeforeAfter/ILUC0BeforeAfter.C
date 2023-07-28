@@ -317,7 +317,7 @@ void Foam::ILUC0BeforeAfter::precondition
             (
                 coupleBouCoeffs_,
                 interfaces_,
-                x,
+                x/preconDiag_,
                 xCorr,               // put result into xCorr
                 cmpt,
                 false
@@ -327,7 +327,7 @@ void Foam::ILUC0BeforeAfter::precondition
             (
                 coupleBouCoeffs_,
                 interfaces_,
-                x,
+                x/preconDiag_,
                 xCorr,               // put result into xCorr
                 cmpt,
                 false
@@ -373,7 +373,7 @@ void Foam::ILUC0BeforeAfter::precondition
             (
                 coupleBouCoeffs_,
                 interfaces_,
-                x,
+                x/preconDiag_,
                 xRev,               // put result into xCorr
                 cmpt,
                 false
@@ -383,7 +383,7 @@ void Foam::ILUC0BeforeAfter::precondition
             (
                 coupleBouCoeffs_,
                 interfaces_,
-                x,
+                x/preconDiag_,
                 xRev,               // put result into xCorr
                 cmpt,
                 false
@@ -452,7 +452,7 @@ void Foam::ILUC0BeforeAfter::preconditionT
             (
                 coupleBouCoeffs_,
                 interfaces_,
-                x,
+                x/preconDiag_,
                 xCorr,               // put result into xCorr
                 cmpt,
                 false
@@ -462,7 +462,7 @@ void Foam::ILUC0BeforeAfter::preconditionT
             (
                 coupleBouCoeffs_,
                 interfaces_,
-                x,
+                x/preconDiag_,
                 xCorr,               // put result into xCorr
                 cmpt,
                 false
@@ -504,7 +504,7 @@ void Foam::ILUC0BeforeAfter::preconditionT
             (
                 coupleBouCoeffs_,
                 interfaces_,
-                x,
+                x/preconDiag_,
                 xRev,               // put result into xCorr
                 cmpt,
                 false
@@ -514,7 +514,7 @@ void Foam::ILUC0BeforeAfter::preconditionT
             (
                 coupleBouCoeffs_,
                 interfaces_,
-                x,
+                x/preconDiag_,
                 xRev,               // put result into xCorr
                 cmpt,
                 false
