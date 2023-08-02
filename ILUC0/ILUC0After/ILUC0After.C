@@ -97,6 +97,36 @@ void Foam::ILUC0After::calcFactorization()
         // off diagonal entries
         label fStart, fEnd, fLsrStart, fLsrEnd;
 
+	// Coupled Boundary ILUC factorisation loop
+	// PW - 02/08/2023
+	forAll (interfaces_, interfaceI)
+	  {
+	    if (interfaces_.set(interfaceI))
+	      {
+		// could update the diagonal?
+		Field<double> preconCoupleBouTmp_ = preconCoupleBouCoeffs_[interfaceI];
+	        Field<double> coupleBouTmp_ = coupleBouCoeffs_[interfaceI];
+		Field<double> coupleIntTmp_ = coupleIntCoeffs_[interfaceI];
+
+		const unallocLabelList& faceCells=interfaces_[interfaceI].coupledInterface().faceCells();
+		const label interfaceSize=coupleBouTmp_.size();
+
+		// Loop over cells in the coupled boundary
+		forAll(faceCells, elemI)
+		  {
+		    // Loop to update all columns of U based on the current L column value
+		    for (label faceLsrI=elemI; faceLsrI < interfaceSize; ++faceLsrI)
+		      {
+			// formally it should be - coupleIntCoeffs_[interfaceI][0] * coupleBouCoeffs_[interfaceI][faceLsrI]
+			// BUT, the signs of coupleBouCoeffs_ and coupleIntCoeffs is incorrect, so has to be + to correct for this
+			// PW, 02/08/2023
+			preconCoupleBouTmp_[faceLsrI] = coupleBouTmp_[faceLsrI] + coupleIntTmp_[elemI] * coupleBouTmp_[faceLsrI];
+		      }
+		  }
+		preconCoupleBouCoeffs_[interfaceI] = preconCoupleBouTmp_;
+	      }
+	  }
+	
         // Crout LU factorization
 
         // Row by row loop (k - loop).
@@ -241,6 +271,7 @@ Foam::ILUC0After::ILUC0After
     preconDiag_(matrix_.diag()),
     preconLower_(matrix.lower()),
     preconUpper_(matrix.upper()),
+    preconCoupleBouCoeffs_(coupleBouCoeffs),
     zDiag_(0),
     z_(preconDiag_.size(), 0),
     w_(preconDiag_.size(), 0)
@@ -267,6 +298,7 @@ Foam::ILUC0After::ILUC0After
     preconDiag_(matrix_.diag()),
     preconLower_(matrix.lower()),
     preconUpper_(matrix.upper()),
+    preconCoupleBouCoeffs_(coupleBouCoeffs),
     zDiag_(0),
     z_(preconDiag_.size(), 0),
     w_(preconDiag_.size(), 0)

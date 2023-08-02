@@ -62,38 +62,22 @@ namespace Foam
 
 void Foam::ILUC0Before::calcFactorization()
 {
-
-  // ADD preconCoupleBouCoeffs as instance variables so they can be used in precondition and preconditionT, within their init and update functions
-
-	  // Info << "Faces" << endl;
-	  // Info << interfaces_[interfaceI].coupledInterface().faceCells() << endl;
-	  // Info << "Bou" << endl;
-	  // Info << coupleBouCoeffs_[interfaceI][5] << endl;
-	  // Info << "Int" << endl;
-	  // Info << coupleIntCoeffs_[interfaceI][5] << endl;
-	  // Info << "Precon" << endl;
-	  // Info << preconCoupleBouCoeffs[interfaceI][5] << endl;
-	  // preconCoupleBouCoeffs[interfaceI][5] = 5;
-	  // Info << preconCoupleBouCoeffs[interfaceI][5] << endl;
-
+    
     if (!matrix_.diagonal())
     {
         // Get necessary const access to matrix addressing
         const lduAddressing& addr = matrix_.lduAddr();
-	//const unallocLabelList& faceCells = interfaces_.faceCells();
 
         // Get upper/lower addressing
         const label* const __restrict__ uPtr = addr.upperAddr().begin();
         const label* const __restrict__ lPtr = addr.lowerAddr().begin();
 
         // Get owner start addressing
-        const label* const __restrict__ ownStartPtr =
-            addr.ownerStartAddr().begin();
+        const label* const __restrict__ ownStartPtr = addr.ownerStartAddr().begin();
 
         // Get losort and losort start addressing
         const label* const __restrict__ lsrPtr = addr.losortAddr().begin();
-        const label* const __restrict__ lsrStartPtr =
-            addr.losortStartAddr().begin();
+        const label* const __restrict__ lsrStartPtr = addr.losortStartAddr().begin();
 
         // Get access to factored matrix entries
         scalar* __restrict__ diagPtr = preconDiag_.begin();
@@ -111,11 +95,42 @@ void Foam::ILUC0Before::calcFactorization()
         // off diagonal entries
         label fStart, fEnd, fLsrStart, fLsrEnd;
 
-        // Crout LU factorization
+	// Coupled Boundary ILUC factorisation loop
+	// PW - 02/08/2023
+	forAll (interfaces_, interfaceI)
+	  {
+	    if (interfaces_.set(interfaceI))
+	      {
+		// could update the diagonal?
+		Field<double> preconCoupleBouTmp_ = preconCoupleBouCoeffs_[interfaceI];
+	        Field<double> coupleBouTmp_ = coupleBouCoeffs_[interfaceI];
+		Field<double> coupleIntTmp_ = coupleIntCoeffs_[interfaceI];
 
+		const unallocLabelList& faceCells=interfaces_[interfaceI].coupledInterface().faceCells();
+		const label interfaceSize=coupleBouTmp_.size();
+
+		// Loop over cells in the coupled boundary
+		forAll(faceCells, elemI)
+		  {
+		    // Loop to update all columns of U based on the current L column value
+		    for (label faceLsrI=elemI; faceLsrI < interfaceSize; ++faceLsrI)
+		      {
+			// formally it should be - coupleIntCoeffs_[interfaceI][0] * coupleBouCoeffs_[interfaceI][faceLsrI]
+			// BUT, the signs of coupleBouCoeffs_ and coupleIntCoeffs is incorrect, so has to be + to correct for this
+			// PW, 02/08/2023
+			preconCoupleBouTmp_[faceLsrI] = coupleBouTmp_[faceLsrI] + coupleIntTmp_[elemI] * coupleBouTmp_[faceLsrI];
+		      }
+		  }
+		preconCoupleBouCoeffs_[interfaceI] = preconCoupleBouTmp_;
+	      }
+	  }
+
+        // Crout LU factorization
+	
         // Row by row loop (k - loop).
         for (label rowI = 0; rowI < nRows; ++rowI)
         {
+	  
             // Start and end of k-th row (upper) and k-th column (lower)
             fStart = ownStartPtr[rowI];
             fEnd = ownStartPtr[rowI + 1];
@@ -182,6 +197,7 @@ void Foam::ILUC0Before::calcFactorization()
             // Update upper and lower coeffs
             for (label faceI = fStart; faceI < fEnd; ++faceI)
             {
+
                 // Get index for current face
                 zwIndex = uPtr[faceI];
 
@@ -189,12 +205,13 @@ void Foam::ILUC0Before::calcFactorization()
                 upperPtr[faceI] = zPtr[zwIndex];
                 lowerPtr[faceI] = wPtr[zwIndex]*diagRowI;
             }
-
+	    
             // Reset temporary working fields
             zDiag_ = 0;
 
             // Only reset parts of the working fields that have been updated in
             // this step (for this row and column)
+
             for
             (
                 label faceLsrI = fLsrStart;
@@ -223,20 +240,6 @@ void Foam::ILUC0Before::calcFactorization()
                 }
             }
         }
-	//ieldField<Field, scalar> preconCoupleBouCoeffs=coupleBouCoeffs_;
-	forAll (interfaces_, interfaceI)
-	  {
-	    if (interfaces_.set(interfaceI))
-	      {
-		const unallocLabelList& faceCells=interfaces_[interfaceI].coupledInterface().faceCells();
-
-		forAll(faceCells, elemI)
-		  {
-		    // update preconCoupleBouCoeffs by preconditioning them
-		    preconCoupleBouCoeffs_[interfaceI][elemI] = 5;
-		  }
-	      }
-	  }
     }
     else
     {
@@ -246,7 +249,6 @@ void Foam::ILUC0Before::calcFactorization()
         }
     }
 }
-
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
@@ -320,6 +322,9 @@ void Foam::ILUC0Before::precondition
     const direction cmpt
 ) const
 {
+
+  //const processorLduInterface& procInterface_=refCast<const processorLduInterface>(interfaces_[4].coupledInterface());
+
     if (!matrix_.diagonal())
     {
         // Get matrix addressing
@@ -347,7 +352,7 @@ void Foam::ILUC0Before::precondition
         {
             matrix_.initMatrixInterfaces
             (
-                coupleBouCoeffs_,
+                preconCoupleBouCoeffs_,
                 interfaces_,
                 x,
                 xCorr,               // put result into xCorr
@@ -357,7 +362,7 @@ void Foam::ILUC0Before::precondition
 
             matrix_.updateMatrixInterfaces
             (
-                coupleBouCoeffs_,
+                preconCoupleBouCoeffs_,
                 interfaces_,
                 x,
                 xCorr,               // put result into xCorr
@@ -454,7 +459,7 @@ void Foam::ILUC0Before::preconditionT
         {
             matrix_.initMatrixInterfaces
             (
-                coupleBouCoeffs_,
+                preconCoupleBouCoeffs_,
                 interfaces_,
                 x,
                 xCorr,               // put result into xCorr
@@ -464,7 +469,7 @@ void Foam::ILUC0Before::preconditionT
 
             matrix_.updateMatrixInterfaces
             (
-                coupleBouCoeffs_,
+                preconCoupleBouCoeffs_,
                 interfaces_,
                 x,
                 xCorr,               // put result into xCorr

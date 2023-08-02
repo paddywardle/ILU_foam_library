@@ -87,7 +87,7 @@ void Foam::ILU0Before::calcPreconDiag()
                 }
             }
         }
-
+	
         // Do core matrix
 
         const unallocLabelList& upperAddr = matrix_.lduAddr().upperAddr();

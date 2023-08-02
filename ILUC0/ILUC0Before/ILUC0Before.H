@@ -43,6 +43,7 @@ SourceFiles
 #define ILUC0Before_H
 
 #include "lduMatrix.H"
+#include "processorLduInterface.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
