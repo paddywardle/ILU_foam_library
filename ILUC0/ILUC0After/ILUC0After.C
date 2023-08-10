@@ -368,14 +368,13 @@ void Foam::ILUC0After::precondition
         }
 	
         // Parallel preconditioning
-	
-        scalarField xCorr(x.size(), 0);
-
         // Coupled boundary update
         {
+	    scalarField xCorr(x.size(), 0);
+	    
             matrix_.initMatrixInterfaces
             (
-                coupleBouCoeffs_,
+                preconCoupleBouCoeffs_,
                 interfaces_,
                 x,
                 xCorr,               // put result into xCorr
@@ -385,7 +384,7 @@ void Foam::ILUC0After::precondition
 
             matrix_.updateMatrixInterfaces
             (
-                coupleBouCoeffs_,
+                preconCoupleBouCoeffs_,
                 interfaces_,
                 x,
                 xCorr,               // put result into xCorr
@@ -471,14 +470,13 @@ void Foam::ILUC0After::preconditionT
 
         // Parallel preconditioning
         // PW, 20/Jul/2023
-
-        scalarField xCorr(x.size(), 0);
-
         // Coupled boundary update
         {
+	    scalarField xCorr(x.size(), 0);
+	    
             matrix_.initMatrixInterfaces
             (
-                coupleBouCoeffs_,
+                preconCoupleBouCoeffs_,
                 interfaces_,
                 x,
                 xCorr,               // put result into xCorr
@@ -488,7 +486,7 @@ void Foam::ILUC0After::preconditionT
 
             matrix_.updateMatrixInterfaces
             (
-                coupleBouCoeffs_,
+                preconCoupleBouCoeffs_,
                 interfaces_,
                 x,
                 xCorr,               // put result into xCorr

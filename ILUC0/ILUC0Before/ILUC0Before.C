@@ -345,11 +345,10 @@ void Foam::ILUC0Before::precondition
 
         // Parallel preconditioning
         // PW, 20/Jul/2023
-
-        scalarField xCorr(x.size(), 0);
-
         // Coupled boundary update
         {
+	    scalarField xCorr(x.size(), 0);
+	    
             matrix_.initMatrixInterfaces
             (
                 preconCoupleBouCoeffs_,
@@ -452,11 +451,10 @@ void Foam::ILUC0Before::preconditionT
 
         // Parallel preconditioning
         // PW, 20/Jul/2023
-
-        scalarField xCorr(x.size(), 0);
-
         // Coupled boundary update
         {
+	    scalarField xCorr(x.size(), 0);
+	    
             matrix_.initMatrixInterfaces
             (
                 preconCoupleBouCoeffs_,
