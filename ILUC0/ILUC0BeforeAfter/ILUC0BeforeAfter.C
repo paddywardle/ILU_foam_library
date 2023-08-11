@@ -365,6 +365,7 @@ void Foam::ILUC0BeforeAfter::precondition
             );
 
             // Multiply with inverse diag to precondition
+	    // Note: Don't need to multiply by lower or upper as updateMatrixInterfaces multiplies results by coupleBouCoeffs_
             x += xCorr*preconDiag_;
         }
 
@@ -421,6 +422,7 @@ void Foam::ILUC0BeforeAfter::precondition
             );
 
             // Multiply with inverse diag to precondition
+	    // Note: Don't need to multiply by lower or upper as updateMatrixInterfaces multiplies results by coupleBouCoeffs_
             x += xRev*preconDiag_;
         }
     }

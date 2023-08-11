@@ -10,4 +10,4 @@ ILUCp/ILUCpBefore/ILUCpBefore.C
 ILUCp/ILUCpAfter/ILUCpAfter.C
 ILUCp/ILUCpBeforeAfter/ILUCpBeforeAfter.C
 
-LIB = $(FOAM_USER_LIBBIN)/libPaddySolvers
+LIB = $(FOAM_USER_LIBBIN)/libCoupledBoundaryPreconditioners

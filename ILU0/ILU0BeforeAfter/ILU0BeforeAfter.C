@@ -80,7 +80,7 @@ void Foam::ILU0BeforeAfter::calcPreconDiag()
                     // Note: change of the sign compared to main loop below
                     // This is because lower = -intCoeffs
                     // HJ and VV, 19/Jun/2017
-                    // Note: sign fixed 
+                    // Note: sign fixed by HJ, 19/Jun/2017
                     preconDiag_[fc[coeffI]] +=
                         bouCoeffs[coeffI]*intCoeffs[coeffI]/
                         preconDiag_[fc[coeffI]];

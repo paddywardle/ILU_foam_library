@@ -80,7 +80,7 @@ void Foam::ILU0After::calcPreconDiag()
                     // Note: change of the sign compared to main loop below
                     // This is because lower = -intCoeffs
                     // HJ and VV, 19/Jun/2017
-                    // Note: sign fixed by PW, 20/Jul/2023
+                    // Note: sign fixed by HJ, 19/Jun/2017
                     preconDiag_[fc[coeffI]] +=
                         bouCoeffs[coeffI]*intCoeffs[coeffI]/
                         preconDiag_[fc[coeffI]];
@@ -239,19 +239,16 @@ void Foam::ILU0After::precondition
 
 	// Parallel preconditioning
         // PW, 17/Jul/2023
-	
-	//scalarField xRev(x.size(), 0);
-
-        autoPtr<scalarField> xRev(new scalarField(x.size(), 0.0));
-	
 	// Coupled boundary update
         {
+	    scalarField xRev(x.size(), 0);
+	    
             matrix_.initMatrixInterfaces
             (
                 coupleBouCoeffs_,
                 interfaces_,
                 x,
-                xRev(),              // put result into xCorr
+                xRev,              // put result into xCorr
                 cmpt,
                 false
             );
@@ -261,16 +258,15 @@ void Foam::ILU0After::precondition
                 coupleBouCoeffs_,
                 interfaces_,
                 x,
-                xRev(),              // put result into xCorr
+                xRev,              // put result into xCorr
                 cmpt,
                 false
             );
 
             // Multiply with inverse diag to precondition
 	    // Note: Don't need to multiply by lower or upper as updateMatrixInterfaces multiplies results by coupleBouCoeffs_
-	    x += preconDiag_*xRev();
+	    x += preconDiag_*xRev;
         }
-	xRev.clear();
     }
 }
 
